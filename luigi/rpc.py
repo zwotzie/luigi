@@ -40,10 +40,12 @@ try:
     import requests_unixsocket as requests
 except ImportError:
     HAS_UNIX_SOCKET = False
-    try:
-        import requests
-    except ImportError:
-        HAS_REQUESTS = False
+    HAS_REQUESTS = False
+    # removed import of requests, it will not work with > 1 worker
+    #    try:
+    #        import requests
+    #    except ImportError:
+    #        HAS_REQUESTS = False
 
 
 logger = logging.getLogger('luigi-interface')  # TODO: 'interface'?
