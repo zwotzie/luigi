@@ -57,9 +57,13 @@ def _urljoin(base, url):
     arbitrary URIs (esp. 'http+unix://').
     """
     parsed = urlparse(base)
+    # we have luigi scheduler behind an haproxy with additional base_url
+    # client.cfg:
+    # default-scheduler-url: https://<domain>/luigi
+    base_url = '' if parsed.path == '/' else parsed.path
     scheme = parsed.scheme
     return urlparse(
-        urljoin(parsed._replace(scheme='http').geturl(), url)
+        urljoin(parsed._replace(scheme='http').geturl(), base_url + url)
     )._replace(scheme=scheme).geturl()
 
 
