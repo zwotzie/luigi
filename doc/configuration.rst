@@ -540,8 +540,8 @@ client
   "snakebite_with_hadoopcli_fallback", "webhdfs" and "hadoopcli". Snakebite is
   much faster, so use of it is encouraged. webhdfs is fast and works with
   Python 3 as well, but has not been used that much in the wild.
-  Both snakebite and webhdfs requires you to install it separately on
-  the machine. Defaults to "hadoopcli".
+  Both snakebite (or snakebite-py3 for python3) and webhdfs requires you to
+  install it separately on the machine. Defaults to "hadoopcli".
 
 client_version
   Optionally specifies hadoop client version for snakebite.

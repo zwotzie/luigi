@@ -85,18 +85,22 @@ def get_configured_hdfs_client():
     """
     config = hdfs()
     custom = config.client
-    # this is not necessary anymore when importing snakebite_py3 when using python3
-    # conf_usinf_snakebite = [
-    #     "snakebite_with_hadoopcli_fallback",
-    #     "snakebite",
-    # ]
-    # if six.PY3 and (custom in conf_usinf_snakebite):
-    #     warnings.warn(
-    #         "snakebite client not compatible with python3 at the moment"
-    #         "falling back on hadoopcli",
-    #         stacklevel=2
-    #     )
-    #     return "hadoopcli"
+    conf_using_snakebite = [
+        "snakebite_with_hadoopcli_fallback",
+        "snakebite",
+    ]
+    if six.PY3 and (custom in conf_using_snakebite):
+        # snakebite from spotify seems not to be updated to py3 and
+        # snakebite-py3 is out ther on github from internetarchive
+        from snakebite import version as sb
+        if sb.version() < "3":
+            warnings.warn(
+                "snakebite client not compatible with python3 at the moment"
+                "please install snakebite-py3 instead"
+                "falling back on hadoopcli",
+                stacklevel=2
+            )
+            return "hadoopcli"
     return custom
 
 
