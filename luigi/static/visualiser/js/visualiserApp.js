@@ -74,6 +74,7 @@ function visualiserApp(luigi) {
             graph: (task.status == "PENDING" || task.status == "RUNNING" || task.status == "DONE"),
             error: task.status == "FAILED",
             re_enable: task.status == "DISABLED" && task.re_enable_able,
+            mark_as_done: (task.status == "RUNNING" || task.status == "FAILED" || task.status == "DISABLED"),
             statusMessage: task.status_message,
             progressPercentage: task.progress_percentage,
             acceptsMessages: task.accepts_messages,
@@ -192,10 +193,40 @@ function visualiserApp(luigi) {
         });
         var taskList = [];
         $.each(counts, function (name) {
-            taskList.push({name: name, count: counts[name]});
+            var dotIndex = name.indexOf('.');
+            var prefix = 'Others';
+            if (dotIndex > 0) {
+                prefix = name.slice(0, dotIndex);
+            }
+            var prefixList = taskList.find(function (pref) {
+                return pref.name == prefix;
+            })
+            if (prefixList) {
+                prefixList.tasks.push({name: name, count: counts[name]});
+            } else {
+                prefixList = {
+                    name: prefix,
+                    tasks: [{name: name, count: counts[name]}]
+                }
+                taskList.push(prefixList);
+            }
+
         });
         taskList.sort(function(a,b){
-          return a.name.localeCompare(b.name);
+            if (a.name == 'Others') {
+                if (b.name == 'Others') {
+                    return 0;
+                }
+                return 1;
+            } else if (b.name == 'Others') {
+                return -1;
+            }
+            return a.name.localeCompare(b.name);
+        });
+        taskList.forEach(function(p){
+            p.tasks.sort(function(a,b){
+                return a.name.localeCompare(b.name);
+            });
         });
         return renderTemplate("sidebarTemplate", {"tasks": taskList});
     }
@@ -909,7 +940,19 @@ function visualiserApp(luigi) {
             $('.sidebar').html(renderSidebar(dt.column(1).data()));
             var selectedFamily = $('.sidebar-menu').find('li[data-task="' + currentFilter.taskFamily + '"]')[0];
             selectSidebarItem(selectedFamily);
-            $('.sidebar-menu').on('click', 'li', function () {
+
+            if (selectedFamily) {
+                var selectedUl = $(selectedFamily).parent();
+                selectedUl.show();
+                selectedUl.prev().addClass('expanded');
+            } else {
+                var others = $('.sidebar-folder:contains(Others)')
+                others.addClass('expanded')
+                others.next().show()
+            }
+
+            $('.sidebar-menu').on('click', 'li:not(.sidebar-folder)', function (e) {
+                e.stopPropagation();
                 if (this.dataset.task) {
                     selectSidebarItem(this);
                     if ($(this).hasClass('active')) {
@@ -919,6 +962,16 @@ function visualiserApp(luigi) {
                         filterByTaskFamily("", dt);
                     }
                 }
+            });
+
+            $('.sidebar-menu').on('click', '.sidebar-folder', function () {
+                const ul = this.nextElementSibling;
+                $(ul).slideToggle()
+                this.classList.toggle('expanded')
+            })
+
+            $('#clear-task-filter').on('click', function () {
+                filterByTaskFamily("", dt);
             });
 
             if ($.isEmptyObject(missingCategories)) {
@@ -1034,7 +1087,7 @@ function visualiserApp(luigi) {
         return $('.resource-box.in').toArray().map(function (val) { return val.dataset.resource; });
     }
 
-    function expandResources(resources) {        
+    function expandResources(resources) {
         if (resources === undefined) {
             resources = [];
         } else {
@@ -1073,6 +1126,15 @@ function visualiserApp(luigi) {
 
     $(document).ready(function() {
         loadTemplates();
+
+        luigi.hasTaskHistory(function(hasTaskHistory) {
+            if (hasTaskHistory) {
+                $('#topNavbar').append(renderTemplate('topNavbarItem', {
+                    label: "History",
+                    href: "../../history",
+                }).children()[0]);
+            }
+        });
 
         luigi.isPauseEnabled(function(enabled) {
             if (enabled) {
@@ -1273,6 +1335,21 @@ function visualiserApp(luigi) {
             var row = dt.row( tr );
             var data = row.data();
             luigi.forgiveFailures(data.taskId, function(data) {
+                if (ev.altKey) {
+                    updateTasks(); // update may not be cheap
+                } else {
+                    that.tooltip('hide');
+                    that.remove();
+                }
+            });
+        } );
+
+        $('#taskTable tbody').on('click', 'td.details-control .markAsDone', function (ev) {
+            var that = $(this);
+            var tr = that.closest('tr');
+            var row = dt.row( tr );
+            var data = row.data();
+            luigi.markAsDone(data.taskId, function(data) {
                 if (ev.altKey) {
                     updateTasks(); // update may not be cheap
                 } else {
